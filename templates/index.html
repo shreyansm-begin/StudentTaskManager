@@ -1,0 +1,358 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyFlow | Student Task Manager</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<div class="layout">
+
+    <aside class="sidebar">
+        <h2>StudyFlow<span>.</span></h2>
+
+        <p class="side-label">WORKSPACE</p>
+        <a class="nav active" href="/">▦ Dashboard</a>
+
+        <div class="side-note">
+            <strong>Stay organized.</strong>
+            <p>Plan your work, track your progress and reach your goals.</p>
+        </div>
+
+        <div class="side-footer">
+            Student Task Manager<br>
+            Built with Flask
+        </div>
+    </aside>
+
+    <main class="main">
+
+        <header class="topbar">
+            <div>
+                <p class="eyebrow">YOUR WORKSPACE</p>
+                <h1>My Dashboard</h1>
+                <p class="muted">Manage your tasks and stay on track.</p>
+            </div>
+            <div class="date-pill">📅 {{ today }}</div>
+        </header>
+
+        <!-- FLASH MESSAGES -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- DEADLINE ALERTS -->
+        <section class="deadline-alerts">
+
+            {% if overdue > 0 %}
+            <div class="deadline-box overdue-box">
+                <div>
+                    <h3>⚠️ Overdue Tasks</h3>
+                    <p>You have {{ overdue }} unfinished overdue task(s).</p>
+                </div>
+                <strong>{{ overdue }}</strong>
+            </div>
+            {% endif %}
+
+            {% if due_today > 0 %}
+            <div class="deadline-box today-box">
+                <div>
+                    <h3>📅 Due Today</h3>
+                    <p>{{ due_today }} task(s) need attention today.</p>
+                </div>
+                <strong>{{ due_today }}</strong>
+            </div>
+            {% endif %}
+
+            {% if upcoming > 0 %}
+            <div class="deadline-box upcoming-box">
+                <div>
+                    <h3>🔔 Upcoming Deadlines</h3>
+                    <p>{{ upcoming }} task(s) are due within 3 days.</p>
+                </div>
+                <strong>{{ upcoming }}</strong>
+            </div>
+            {% endif %}
+
+            {% if overdue == 0 and due_today == 0 and upcoming == 0 %}
+            <div class="deadline-box safe-box">
+                <div>
+                    <h3>✓ You're on track!</h3>
+                    <p>No overdue or upcoming deadlines to worry about.</p>
+                </div>
+            </div>
+            {% endif %}
+
+        </section>
+
+        <!-- STATISTICS -->
+        <section class="stats">
+
+            <div class="stat-card">
+                <p>Total Tasks</p>
+                <h2>{{ total }}</h2>
+                <span>All your tasks</span>
+            </div>
+
+            <div class="stat-card">
+                <p>To Do</p>
+                <h2>{{ pending }}</h2>
+                <span>Waiting to start</span>
+            </div>
+
+            <div class="stat-card">
+                <p>In Progress</p>
+                <h2>{{ in_progress }}</h2>
+                <span>Currently working</span>
+            </div>
+
+            <div class="stat-card">
+                <p>Completed</p>
+                <h2>{{ completed }}</h2>
+                <span>Successfully finished</span>
+            </div>
+
+        </section>
+
+        <!-- PROGRESS -->
+        <section class="progress-card">
+            <div class="progress-heading">
+                <div>
+                    <h3>Overall Progress</h3>
+                    <p class="muted">Your task completion summary</p>
+                </div>
+                <strong>{{ progress }}%</strong>
+            </div>
+
+            <div class="progress-track">
+                <div class="progress-fill" style="width: {{ progress }}%"></div>
+            </div>
+
+            <p class="muted">{{ overdue }} overdue task(s) need attention.</p>
+        </section>
+
+        <!-- OVERDUE TASK LIST -->
+        {% if overdue_tasks %}
+        <section class="panel overdue-panel">
+
+            <h2>⚠️ Tasks Requiring Attention</h2>
+            <p class="muted">These tasks have passed their deadlines and are not completed.</p>
+
+            {% for task in overdue_tasks %}
+            <div class="overdue-task">
+
+                <div>
+                    <h3>{{ task.title }}</h3>
+                    <p>{{ task.category }} · {{ task.priority }} Priority</p>
+                    <small>Deadline: {{ task.due_date }}</small>
+                </div>
+
+                <form action="{{ url_for('update_status', task_id=task.id) }}" method="POST">
+                    <input type="hidden" name="status" value="Completed">
+                    <button class="primary-btn" type="submit">Mark Completed</button>
+                </form>
+
+            </div>
+            {% endfor %}
+
+        </section>
+        {% endif %}
+
+        <div class="content-grid">
+
+            <!-- ADD TASK -->
+            <section class="panel add-panel">
+
+                <h2>＋ Add New Task</h2>
+                <p class="muted">Create a task and set your priorities.</p>
+
+                <form action="{{ url_for('add_task') }}" method="POST">
+
+                    <label>Task Title</label>
+                    <input type="text" name="title"
+                           placeholder="e.g. Complete Python assignment" required>
+
+                    <label>Description</label>
+                    <textarea name="description"
+                              placeholder="Add task details..."></textarea>
+
+                    <label>Due Date</label>
+                    <input type="date" name="due_date">
+
+                    <label>Priority</label>
+                    <select name="priority">
+                        <option>Medium</option>
+                        <option>High</option>
+                        <option>Low</option>
+                    </select>
+
+                    <label>Category</label>
+                    <select name="category">
+                        {% for category in categories %}
+                            <option value="{{ category }}">{{ category }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <button class="primary-btn" type="submit">Add Task +</button>
+
+                </form>
+            </section>
+
+            <!-- TASK LIST -->
+            <section class="panel tasks-panel">
+
+                <div class="section-heading">
+                    <div>
+                        <h2>Your Tasks</h2>
+                        <p class="muted">Search and manage your work.</p>
+                    </div>
+                    <span class="task-count">{{ tasks|length }} shown</span>
+                </div>
+
+                <!-- SEARCH AND FILTER -->
+                <form class="filter-form" method="GET" action="/">
+
+                    <input type="text" name="search"
+                           value="{{ search }}" placeholder="Search tasks...">
+
+                    <select name="status">
+                        <option value="">All statuses</option>
+                        {% for item in statuses %}
+                            <option value="{{ item }}"
+                            {% if status_filter == item %}selected{% endif %}>
+                                {{ item }}
+                            </option>
+                        {% endfor %}
+                    </select>
+
+                    <select name="priority">
+                        <option value="">All priorities</option>
+                        {% for item in priorities %}
+                            <option value="{{ item }}"
+                            {% if priority_filter == item %}selected{% endif %}>
+                                {{ item }}
+                            </option>
+                        {% endfor %}
+                    </select>
+
+                    <select name="category">
+                        <option value="">All categories</option>
+                        {% for item in categories %}
+                            <option value="{{ item }}"
+                            {% if category_filter == item %}selected{% endif %}>
+                                {{ item }}
+                            </option>
+                        {% endfor %}
+                    </select>
+
+                    <button class="filter-btn" type="submit">Apply</button>
+                    <a class="clear-btn" href="/">Clear</a>
+
+                </form>
+
+                <!-- DISPLAY TASKS -->
+                {% if tasks %}
+
+                    {% for task in tasks %}
+
+                    <article class="task-item">
+
+                        <div class="task-details">
+
+                            <h3 class="{% if task.status == 'Completed' %}done{% endif %}">
+                                {{ task.title }}
+                            </h3>
+
+                            <p>{{ task.description or 'No description provided.' }}</p>
+
+                            <div class="chips">
+
+                                <span class="chip">{{ task.category }}</span>
+
+                                <span class="chip priority-{{ task.priority|lower }}">
+                                    {{ task.priority }} priority
+                                </span>
+
+                                <span class="chip status-{{ task.status|lower|replace(' ', '-') }}">
+                                    {{ task.status }}
+                                </span>
+
+                            </div>
+
+                            <small class="{% if task.due_date and task.due_date < today and task.status != 'Completed' %}overdue-text{% endif %}">
+                                Due: {{ task.due_date or 'No due date' }}
+
+                                {% if task.due_date and task.due_date < today and task.status != 'Completed' %}
+                                    · Overdue
+                                {% elif task.due_date == today and task.status != 'Completed' %}
+                                    · Due Today
+                                {% endif %}
+                            </small>
+
+                        </div>
+
+                        <div class="task-actions">
+
+                            <form action="{{ url_for('update_status', task_id=task.id) }}"
+                                  method="POST">
+
+                                <select name="status" onchange="this.form.submit()">
+
+                                    {% for item in statuses %}
+                                        <option value="{{ item }}"
+                                        {% if task.status == item %}selected{% endif %}>
+                                            {{ item }}
+                                        </option>
+                                    {% endfor %}
+
+                                </select>
+
+                            </form>
+
+                            <a class="edit-btn"
+                               href="{{ url_for('edit_task', task_id=task.id) }}">
+                                Edit
+                            </a>
+
+                            <form action="{{ url_for('delete_task', task_id=task.id) }}"
+                                  method="POST"
+                                  onsubmit="return confirm('Are you sure you want to delete this task?')">
+
+                                <button class="delete-btn" type="submit">Delete</button>
+
+                            </form>
+
+                        </div>
+
+                    </article>
+
+                    {% endfor %}
+
+                {% else %}
+
+                    <div class="empty-state">
+                        <h3>No tasks found</h3>
+                        <p>Try another search or add a new task.</p>
+                    </div>
+
+                {% endif %}
+
+            </section>
+
+        </div>
+
+        <footer>StudyFlow · Student Task Manager</footer>
+
+    </main>
+
+</div>
+
+</body>
+</html>
